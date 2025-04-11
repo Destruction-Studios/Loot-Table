@@ -4,8 +4,14 @@
     "$className": "DataModel",
 
     "ReplicatedStorage": {
-      "LootTable":{
-        "$path":"src/LootTable"
+      "Shared": {
+        "$path":"src"
+      }
+    },
+
+    "ServerScriptService": {
+      "Server":{
+        "$path":"tests"
       }
     }
   }
