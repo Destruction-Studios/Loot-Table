@@ -26,39 +26,34 @@ local override = false
 
 local lti = LootTableModule.new({
 	{
-		Chance = 10,
 		Value = "A",
-		Condition = function()
-			if override == true then
-				return LootTableModule.Choose
-			end
-		end,
+		Weight = 2,
 	},
 	{
-		Chance = 2,
 		Value = "B",
+		Weight = 2,
 	},
 }):Inverse()
 
-print(lti:Roll())
+local rng = Random.new()
 
--- local results = {}
--- local total = 1e9 -- Increase for more precision, but more computing time
+local results = {}
+local total = 1000 -- Increase for more precision, but more computing time
 
--- for i = 1, total do
--- 	local item = tli:Roll()
--- 	if item then
--- 		results[item] = (results[item] or 0) + 1
--- 	end
--- 	if i % 99999 == 0 then
--- 		task.wait()
--- 		print("Delay ", i)
--- 	end
--- end
+for i = 1, total do
+	local item = lti:Roll()
+	if item then
+		results[item] = (results[item] or 0) + 1
+	end
+	if i % 99999 == 0 then
+		print("Delay", i)
+		task.wait()
+	end
+end
 
--- warn("<<<<<<<<<< Invserse >>>>>>>>>>")
--- for i, v in pairs(results) do
--- 	local chance = v / total * 100
--- 	warn(`{i}: {math.floor(chance * 100) / 100}%`)
--- end
--- warn("<<<<<<<<<<<<<<>>>>>>>>>>>>>>")
+warn("<<<<<<<<<< Inverse >>>>>>>>>>")
+for i, v in pairs(results) do
+	local chance = v / total * 100
+	warn(`{i}: {math.floor(chance * 100) / 100}%`)
+end
+warn("<<<<<<<<<<<<<<>>>>>>>>>>>>>>")

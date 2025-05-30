@@ -1,10 +1,15 @@
 export type Condition = (...any) -> boolean
-export type Chance = number
+export type Weight = number
+export type Value = any | LootTable
 
 export type Reward = {
-	Chance: Chance,
-	Value: any | LootTable,
-	Condition: Condition?,
+	Weight: Weight,
+	Value: Value,
+}
+
+export type Probability = {
+	Value: Value,
+	Weight: number,
 }
 
 export type LootTableItems = { [any]: Reward }
@@ -14,13 +19,7 @@ export type LootTable = {
 	Inverse: (self: LootTable) -> LootTable,
 }
 
-local UniqueKey = require(script.Parent.UniqueKey)
-
-local LootTable = {
-	IgnoreAndPass = UniqueKey("IgnoreAndPass"),
-	IgnoreAndCount = UniqueKey("IgnoreAndCount"),
-	Choose = UniqueKey("Choose"),
-}
+local LootTable = {}
 local LootTableMT = {}
 LootTableMT.__index = LootTableMT
 
@@ -34,12 +33,7 @@ function LootTable.new(lootTable: LootTableItems): LootTable
 	self._random = Random.new()
 	self._inverse = false
 	self._lootTable = lootTable
-
-	self._prob = {}
-
-	for _, v in lootTable do
-		v.Chance = v.Chance or 2
-	end
+	self._probabilities = {}
 
 	return self
 end
@@ -54,65 +48,43 @@ end
 function LootTableMT:_getWeight()
 	local result = 0
 	for _, v: Reward in self._lootTable do
-		result += v.Chance
+		result += v.Weight
 	end
 	return result
 end
 
 function LootTableMT:_getRandomInverse()
-	local rand = self._random:NextNumber()
-	local counter = 0
+	print(self._probabilities)
 
-	local result = nil
-
-	for _, prob in self._prob do
-		if typeof(prob.Condition) == "function" then
-			local conditionResult = prob.Condition()
-			if conditionResult == LootTable.IgnoreAndPass then
-				continue
-			elseif conditionResult == LootTable.IgnoreAndCount then
-				counter += prob.Chance
-				continue
-			elseif conditionResult == LootTable.Choose then
-				result = prob.Value
-				continue
-			end
-		end
-		counter += prob.Chance
-		if rand <= counter then
-			result = prob.Value
+	local rand = math.random()
+	local totalProb = 0
+	for _, prob: Probability in pairs(self._probabilities) do
+		totalProb = totalProb + prob.Weight
+		if rand <= totalProb then
+			return self:_fromValue(prob.Value)
 		end
 	end
 
-	return if result then self:_fromValue(result) else nil
+	error(`Could not get item`)
 end
 
 function LootTableMT:_getRandom()
-	local totalWeight = self:_getWeight()
-	local randomNum = self._random:NextNumber(0, totalWeight)
-	local counter = 0
+	local weight = 0
+	for _, v: Reward in self._lootTable do
+		weight += v.Weight
+	end
 
-	local result = nil
+	local randomNumber = self._random:NextNumber(0, weight)
+	weight = 0
 
-	for _, v in self._lootTable do
-		if typeof(v.Condition) == "function" then
-			local conditionResult = v.Condition()
-			if conditionResult == LootTable.IgnoreAndPass then
-				continue
-			elseif conditionResult == LootTable.IgnoreAndCount then
-				counter += v.Chance
-				continue
-			elseif conditionResult == LootTable.Choose then
-				result = v.Value
-			end
-		end
-		counter += v.Chance
-		if randomNum <= counter then
-			result = v.Value
+	for _, v: Reward in self._lootTable do
+		weight += v.Weight
+		if weight >= randomNumber then
+			return self:_fromValue(v.Value)
 		end
 	end
 
-	return if result then self:_fromValue(result) else nil
+	error(`Could not get item`)
 end
 
 function LootTableMT:_roll()
@@ -128,17 +100,17 @@ end
 function LootTableMT:Inverse()
 	self._inverse = true
 
+	local items = self._lootTable
+	local totalInverse = 0
 	local inverses = {}
-	local totalInverses = 0
 
-	for i, reward: Reward in self._lootTable do
-		local inverse = 1 / reward.Chance
-		inverses[i] = inverse
-		totalInverses += inverse
+	for i, item: Reward in pairs(items) do
+		inverses[i] = 1 / item.Weight
+		totalInverse = totalInverse + inverses[i]
 	end
 
-	for i, inverse in inverses do
-		self._prob[i] = { Chance = inverse / totalInverses, Value = self._lootTable[i].Value }
+	for i, inverse in pairs(inverses) do
+		self._probabilities[i] = { Weight = inverse / totalInverse, Value = items[i].Value }
 	end
 
 	return self
