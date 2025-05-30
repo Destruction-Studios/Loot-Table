@@ -5,10 +5,9 @@ export type Reward = {
 	Chance: Chance,
 	Value: any | LootTable,
 	Condition: Condition?,
-	Inverse: boolean?,
 }
 
-export type LootTableItems = { Reward }
+export type LootTableItems = { [any]: Reward }
 
 export type LootTable = {
 	Roll: (self: LootTable) -> any,
@@ -37,6 +36,10 @@ function LootTable.new(lootTable: LootTableItems): LootTable
 	self._lootTable = lootTable
 
 	self._prob = {}
+
+	for _, v in lootTable do
+		v.Chance = v.Chance or 2
+	end
 
 	return self
 end
